@@ -12,6 +12,9 @@ from os import path, makedirs
 from streamlit_elements import elements, mui, html
 from streamlit_extras.add_vertical_space import add_vertical_space
 
+# Global font constants for consistent styling
+HELVETICA_FONT = 'Helvetica Neue, Helvetica, Arial, sans-serif'
+
 # Set page configuration
 st.set_page_config(
     page_title="AG Hierarchy Builder",
@@ -128,7 +131,7 @@ def plot_dist(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_jumps):
     # Sort the AGs by product count
     sorted_dist = dist_.sort_values(ascending=False)
     
-    # Extract actual AG names from the index
+    # Extract actual AG names from the index (for display on axis)
     ag_names = []
     for ag_idx in sorted_dist.index:
         ag_parts = str(ag_idx).split('_')
@@ -142,13 +145,13 @@ def plot_dist(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_jumps):
     # Create the Plotly figure
     fig = go.Figure()
     
-    # Add the bar chart with hover tooltips
+    # Add the bar chart with hover tooltips showing FULL AG names
     fig.add_trace(go.Bar(
         x=list(range(len(sorted_dist))),
         y=sorted_dist.values,
         marker_color='#38BDF8',
         hoverinfo='text',
-        hovertext=[f'AG: {ag_names[i]}<br>Products: {int(val)}' for i, val in enumerate(sorted_dist.values)],
+        hovertext=[f'AG: {str(ag_idx)}<br>Products: {int(val)}' for ag_idx, val in sorted_dist.items()],
         name='Products per AG'
     ))
     
@@ -170,15 +173,15 @@ def plot_dist(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_jumps):
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': 'Arial, sans-serif'}
+            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
         },
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
             'title': {
                 'text': 'Assortment Groups',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': tickvals,
             'ticktext': ticktext,
@@ -187,9 +190,9 @@ def plot_dist(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_jumps):
         yaxis={
             'title': {
                 'text': '# of Products',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'gridcolor': '#94A3B8',
             'gridwidth': 1,
         },
@@ -209,7 +212,7 @@ def plot_ags(dist_, df_stats, comb_str, hist_xlimit):
     # Generate colors from our design system palette
     colors = generate_colors(len(top_ags))
     
-    # Extract actual AG names from the index
+    # Extract actual AG names from the index (for display on axis)
     ag_names = []
     for ag_idx in top_ags.index:
         ag_parts = str(ag_idx).split('_')
@@ -223,13 +226,13 @@ def plot_ags(dist_, df_stats, comb_str, hist_xlimit):
     # Create the Plotly figure
     fig = go.Figure()
     
-    # Add the bar chart with hover tooltips
+    # Add the bar chart with hover tooltips showing FULL AG names
     fig.add_trace(go.Bar(
         x=list(range(len(top_ags))),
         y=top_ags.values,
         marker_color=colors,
         hoverinfo='text',
-        hovertext=[f'AG: {ag_names[i]}<br>Products: {int(val)}' for i, val in enumerate(top_ags.values)],
+        hovertext=[f'AG: {str(ag_idx)}<br>Products: {int(val)}' for ag_idx, val in top_ags.items()],
         name='Products per AG'
     ))
     
@@ -241,15 +244,15 @@ def plot_ags(dist_, df_stats, comb_str, hist_xlimit):
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': 'Arial, sans-serif'}
+            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
         },
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
             'title': {
                 'text': 'Assortment Group',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': list(range(len(ag_names))),
             'ticktext': ag_names,
@@ -258,9 +261,9 @@ def plot_ags(dist_, df_stats, comb_str, hist_xlimit):
         yaxis={
             'title': {
                 'text': '# of Products',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'gridcolor': '#94A3B8',
             'gridwidth': 1,
         },
@@ -273,14 +276,14 @@ def plot_ags(dist_, df_stats, comb_str, hist_xlimit):
     return fig
 
 def plot_price_variance(price_stats, comb_str):
-    """Plot price variation for top AGs using Plotly for interactive tooltips"""
+    """Plot price variation for all AGs using Plotly for interactive tooltips"""
     if price_stats is None:
         return None
     
-    # Sort and get top AGs by count
-    top_ags = price_stats.sort_values('Count', ascending=False).head(20)
+    # Sort all AGs by count
+    top_ags = price_stats.sort_values('Count', ascending=False)
     
-    # Extract actual AG names from the index
+    # Extract actual AG names from the index (for display on axis)
     ag_names = []
     for ag_idx in top_ags.index:
         ag_parts = str(ag_idx).split('_')
@@ -294,7 +297,7 @@ def plot_price_variance(price_stats, comb_str):
     # Create the Plotly figure
     fig = go.Figure()
     
-    # Add the bar chart with hover tooltips
+    # Add the bar chart with hover tooltips showing FULL AG names
     fig.add_trace(go.Bar(
         x=list(range(len(top_ags))),
         y=top_ags['Price CV'].values,
@@ -302,8 +305,8 @@ def plot_price_variance(price_stats, comb_str):
         marker_line_color='#DC2626',
         marker_line_width=1,
         hoverinfo='text',
-        hovertext=[f'AG: {ag_names[i]}<br>Price CV: {val:.1f}%<br>Mean Price: {top_ags["Price Mean"].iloc[i]:.2f}<br>Min Price: {top_ags["Price Min"].iloc[i]:.2f}<br>Max Price: {top_ags["Price Max"].iloc[i]:.2f}' 
-                  for i, val in enumerate(top_ags['Price CV'].values)],
+        hovertext=[f'AG: {ag_idx}<br>Price CV: {val:.1f}%<br>Mean Price: {top_ags["Price Mean"].iloc[i]:.2f}<br>Min Price: {top_ags["Price Min"].iloc[i]:.2f}<br>Max Price: {top_ags["Price Max"].iloc[i]:.2f}' 
+                  for i, (ag_idx, val) in enumerate(zip(top_ags.index, top_ags['Price CV'].values))],
         name='Price Variation'
     ))
     
@@ -315,15 +318,15 @@ def plot_price_variance(price_stats, comb_str):
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': 'Arial, sans-serif'}
+            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
         },
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
             'title': {
                 'text': 'Assortment Group',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': list(range(len(ag_names))),
             'ticktext': ag_names,
@@ -332,9 +335,9 @@ def plot_price_variance(price_stats, comb_str):
         yaxis={
             'title': {
                 'text': 'Price Coefficient of Variation (%)',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'gridcolor': '#94A3B8',
             'gridwidth': 1,
         },
@@ -354,6 +357,63 @@ def save_comb(df, comb_str, output_dir='output'):
     csv_path = path.join(output_dir, f'{comb_str}.csv')
     df.to_csv(csv_path, index=False)
     return csv_path
+
+def plot_numeric_attribute(attr_name, stats):
+    """Plot histogram for numeric attribute using Plotly for interactive tooltips"""
+    # Extract histogram data
+    counts, bins = stats['histogram']
+    
+    # Create bin labels for the x-axis and tooltip
+    bin_labels = [f"{bins[i]:.2f} - {bins[i+1]:.2f}" for i in range(len(bins)-1)]
+    
+    # Create the Plotly figure
+    fig = go.Figure()
+    
+    # Add the bar chart with hover tooltips
+    fig.add_trace(go.Bar(
+        x=bin_labels,
+        y=counts,
+        marker_color='#38BDF8',  # Neon Sky from our design system
+        hoverinfo='text',
+        hovertext=[f'Range: {bin_labels[i]}<br>Count: {int(count)}' for i, count in enumerate(counts)],
+        name=attr_name
+    ))
+    
+    # Update layout with styling
+    fig.update_layout(
+        title={
+            'text': f'Distribution of {attr_name}',
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
+        },
+        bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
+        xaxis={
+            'title': {
+                'text': attr_name,
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            },
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
+            'tickangle': -45
+        },
+        yaxis={
+            'title': {
+                'text': 'Count',
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            },
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
+            'gridcolor': '#94A3B8',
+            'gridwidth': 1,
+        },
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        hovermode='closest',
+        margin={'t': 60, 'b': 80, 'l': 60, 'r': 20}
+    )
+    
+    return fig
 
 def analyze_attributes(df):
     """Analyze available attributes for their distributions"""
@@ -481,7 +541,7 @@ def plot_hierarchy_level(df_tmp, level, col_name, comb_str):
     # Generate colors from our design system palette
     colors = generate_colors(len(top_groups))
     
-    # Extract actual group names from the index
+    # Extract actual group names from the index (for display on axis)
     group_names = []
     for group_idx in top_groups.index:
         # Truncate long names
@@ -493,13 +553,13 @@ def plot_hierarchy_level(df_tmp, level, col_name, comb_str):
     # Create the Plotly figure
     fig = go.Figure()
     
-    # Add the bar chart with hover tooltips
+    # Add the bar chart with hover tooltips showing FULL group names
     fig.add_trace(go.Bar(
         x=list(range(len(top_groups))),
         y=top_groups.values,
         marker_color=colors,
         hoverinfo='text',
-        hovertext=[f'Group: {group_names[i]}<br>Products: {int(val)}' for i, val in enumerate(top_groups.values)],
+        hovertext=[f'Group: {str(group_idx)}<br>Products: {int(val)}' for group_idx, val in top_groups.items()],
         name=f'Level {level} Groups'
     ))
     
@@ -511,15 +571,15 @@ def plot_hierarchy_level(df_tmp, level, col_name, comb_str):
             'x': 0.5,
             'xanchor': 'center',
             'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': 'Arial, sans-serif'}
+            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
         },
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
             'title': {
                 'text': f'{col_name}',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': list(range(len(group_names))),
             'ticktext': group_names,
@@ -528,9 +588,9 @@ def plot_hierarchy_level(df_tmp, level, col_name, comb_str):
         yaxis={
             'title': {
                 'text': '# of Products',
-                'font': {'size': 12, 'color': '#0F172A'}
+                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
             },
-            'tickfont': {'size': 10, 'color': '#0F172A'},
+            'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'gridcolor': '#94A3B8',
             'gridwidth': 1,
         },
@@ -574,7 +634,7 @@ def chartjs_dist_histogram(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_j
             "title": {
                 "display": True,
                 "text": f"Distribution of Products per AG - {comb_str}",
-                "font": {"size": 16}
+                "font": {"size": 16, "family": HELVETICA_FONT}
             },
             "tooltip": {"mode": "index", "intersect": False},
             "legend": {"position": "top"}
@@ -624,7 +684,7 @@ def chartjs_top_ags(dist_, df_stats, comb_str, hist_xlimit):
             "title": {
                 "display": True,
                 "text": f"Top AGs by Product Count - {comb_str}",
-                "font": {"size": 16}
+                "font": {"size": 16, "family": HELVETICA_FONT}
             },
             "tooltip": {"mode": "index", "intersect": False},
             "legend": {"display": False}
@@ -648,8 +708,8 @@ def chartjs_price_variance(price_stats, comb_str):
     if price_stats is None:
         return None, None
     
-    # Sort and get top AGs by count
-    top_ags = price_stats.sort_values('Count', ascending=False).head(20)
+    # Sort all AGs by count
+    top_ags = price_stats.sort_values('Count', ascending=False)
     
     # Create Chart.js data for price coefficient of variation
     data = {
@@ -781,7 +841,7 @@ st.markdown("""
 
     /* Typography settings */
     body {
-        font-family: 'Inter', 'Roboto', 'SF Pro', sans-serif;
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
     }
     
     h1, .main-title {
@@ -810,6 +870,7 @@ st.markdown("""
     }
     
     .step-title {
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif !important;
         font-size: 20px !important;
         font-weight: 500 !important;
         text-align: center;
@@ -868,6 +929,7 @@ st.markdown("""
 
     /* Component styling */
     .stButton button {
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif !important;
         font-weight: 500 !important;
         background-color: var(--electric-blue) !important;
         color: white !important;
@@ -979,10 +1041,16 @@ st.markdown("""
 
     /* Form elements */
     .stSelectbox label, .stMultiSelect label, .stSlider label, .stFileUploader label {
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif !important;
         font-weight: 500 !important;
         color: var(--charcoal) !important;
         font-size: 16px !important;
         margin-bottom: 5px !important;
+    }
+    
+    /* Add font family to select/input elements themselves */
+    .stSelectbox, .stMultiSelect, .stSlider, .stFileUploader {
+        font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1144,12 +1212,9 @@ elif st.session_state.current_step == 2:
                         st.write(f"Median: {stats['median']:.2f}")
                         st.write(f"Standard Deviation: {stats['std']:.2f}")
                         
-                        # Plot histogram
-                        fig, ax = plt.subplots(figsize=(10, 3))
-                        counts, bins = stats['histogram']
-                        ax.hist(bins[:-1], bins, weights=counts)
-                        ax.set_title(f"Distribution of {attr}")
-                        st.pyplot(fig)
+                        # Plot histogram using Plotly for interactive tooltips
+                        fig = plot_numeric_attribute(attr, stats)
+                        st.plotly_chart(fig, use_container_width=True)
                         
                         # Missing values info
                         if stats['null_count'] > 0:
@@ -1181,21 +1246,20 @@ elif st.session_state.current_step == 3:
         st.write("Select which attributes to use for creating Assortment Groups:")
         st.write("The order of attributes matters - they will form a hierarchy from top to bottom.")
         
-        # Initialize the session state for the widget if it doesn't exist
-        if 'attribute_selection' not in st.session_state:
-            # Set default initial values
-            if st.session_state.selected_attributes:
-                # Use previously selected attributes if they exist
-                st.session_state.attribute_selection = st.session_state.selected_attributes
-            elif 'brands' in available_columns and 'colors' in available_columns:
-                # Default to common retail attributes
-                st.session_state.attribute_selection = ['brands', 'colors']
-            elif len(available_columns) >= 2:
-                # Default to first two columns
-                st.session_state.attribute_selection = available_columns[:2]
-            else:
-                # Use whatever is available
-                st.session_state.attribute_selection = available_columns
+        # Determine default values for attribute selection
+        default_attributes = []
+        if st.session_state.selected_attributes:
+            # Use previously selected attributes if they exist
+            default_attributes = st.session_state.selected_attributes
+        elif 'brands' in available_columns and 'colors' in available_columns:
+            # Default to common retail attributes
+            default_attributes = ['brands', 'colors']
+        elif len(available_columns) >= 2:
+            # Default to first two columns
+            default_attributes = available_columns[:2]
+        else:
+            # Use whatever is available
+            default_attributes = available_columns
         
         # Function to update session state on selection change
         def update_selected_attributes():
@@ -1205,7 +1269,7 @@ elif st.session_state.current_step == 3:
         selected_attributes = st.multiselect(
             "Select Attributes",
             available_columns,
-            default=st.session_state.attribute_selection,
+            default=default_attributes,
             key="attribute_selection",
             on_change=update_selected_attributes
         )
@@ -1318,7 +1382,7 @@ elif st.session_state.current_step == 4:
                 st.dataframe(df_stats, use_container_width=True)
 
         # Modern Chart.js Visualizations in tabs
-        tab1, tab2, tab3 = st.tabs(["Products per AG Distribution", "Top AGs by Product Count", "Price Variation"])
+        tab1, tab2 = st.tabs(["Products per AG Distribution", "Price Variation"])
         
         with tab1:
             # Distribution of products per AG using Plotly
@@ -1339,23 +1403,6 @@ elif st.session_state.current_step == 4:
             st.markdown('</div>', unsafe_allow_html=True)
         
         with tab2:
-            # Top AGs by product count using Plotly
-            st.write("This chart shows which AGs have the most products.")
-            
-            # Create the Plotly chart
-            fig = plot_ags(
-                dist_, 
-                df_stats, 
-                comb_str, 
-                st.session_state.hist_xlimit
-            )
-            
-            # Display in a styled container
-            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            st.plotly_chart(fig)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with tab3:
             # Price variation by AG
             if price_stats is not None:
                 st.write("This chart shows price variation within each AG (coefficient of variation %).")
@@ -1419,9 +1466,6 @@ elif st.session_state.current_step == 4:
                         st.plotly_chart(fig)
                         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Download results in a styled container
-        st.subheader("Download Results")
-        
         # Create output directory
         output_dir = 'output'
         if not path.exists(output_dir):
@@ -1430,14 +1474,7 @@ elif st.session_state.current_step == 4:
         # Save results and offer download
         csv_path = save_comb(df=df_tmp, comb_str=comb_str)
         
-        # Styled download container
-        st.markdown("""
-        <div class="stat-card">
-            <h3 style="font-size: 18px; color: var(--space-navy); margin-bottom: 10px;">Export Data</h3>
-            <p style="color: var(--slate-grey); margin-bottom: 15px;">Download your analysis results</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        # Simple download button without the header
         with open(csv_path, "rb") as file:
             st.download_button(
                 label=f"📥 Download AG Results as CSV",
