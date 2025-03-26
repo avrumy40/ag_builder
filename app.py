@@ -35,6 +35,13 @@ if 'attribute_stats' not in st.session_state:
     st.session_state.attribute_stats = {}
 if 'auto_scroll' not in st.session_state:
     st.session_state.auto_scroll = False
+# For multiple attribute combinations selection
+if 'selected_combinations' not in st.session_state:
+    st.session_state.selected_combinations = []
+if 'selected_recommended_combinations' not in st.session_state:
+    st.session_state.selected_recommended_combinations = []
+if 'comparison_results' not in st.session_state:
+    st.session_state.comparison_results = []
 # Set default values for visualization and analysis parameters
 if 'hist_xlimit' not in st.session_state:
     st.session_state.hist_xlimit = 50
@@ -172,15 +179,13 @@ def plot_dist(dist_, df_stats, comb_str, hist_xlimit, hist_xticks_jumps):
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            'yanchor': 'top'
         },
+        title_font={'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT},
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
-            'title': {
-                'text': 'Assortment Groups',
-                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
-            },
+            'title': 'Assortment Groups',
+            'title_font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': tickvals,
@@ -317,15 +322,13 @@ def plot_price_variance(price_stats, comb_str):
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            'yanchor': 'top'
         },
+        title_font={'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT},
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
-            'title': {
-                'text': 'Assortment Group',
-                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
-            },
+            'title': 'Assortment Group',
+            'title_font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': list(range(len(ag_names))),
@@ -386,15 +389,13 @@ def plot_numeric_attribute(attr_name, stats):
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            'yanchor': 'top'
         },
+        title_font={'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT},
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
-            'title': {
-                'text': attr_name,
-                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
-            },
+            'title': attr_name,
+            'title_font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickangle': -45
         },
@@ -458,6 +459,235 @@ def analyze_attributes(df):
     
     return results
 
+def suggest_optimal_combinations(df, available_columns, max_attributes=3, max_combinations=10, 
+                          min_products=5, max_products=None, min_ags=5, max_ags=None, excluded_attributes=None):
+    """Suggest optimal attribute combinations by evaluating multiple possibilities
+    
+    Args:
+        df: Input dataframe with product data
+        available_columns: List of possible columns to use
+        max_attributes: Maximum number of attributes to include in a combination
+        max_combinations: Maximum number of combinations to evaluate
+        min_products: Minimum products per AG (default 5)
+        max_products: Maximum products per AG (default None = no limit)
+        min_ags: Minimum number of AGs to create (default 5)
+        max_ags: Maximum number of AGs to create (default None = no limit)
+        excluded_attributes: List of attributes to exclude from recommendations (default None)
+        
+    Returns:
+        A list of tuples (attributes, score, explanation) sorted by score (highest first)
+    """
+    # Excluded columns that shouldn't be used for AG creation
+    excluded_columns = ['ag', 'id', 'name', 'description', 'product_description', 'product_id']
+    
+    # Add user-specified exclusions
+    if excluded_attributes:
+        excluded_columns.extend(excluded_attributes)
+        
+    filtered_columns = [col for col in available_columns if col not in excluded_columns]
+    
+    # Generate attribute combinations (limit to reasonable number)
+    all_combinations = []
+    
+    # 1-attribute combinations
+    all_combinations.extend([(col,) for col in filtered_columns])
+    
+    # 2-attribute combinations
+    if max_attributes >= 2:
+        for i, col1 in enumerate(filtered_columns):
+            for col2 in filtered_columns[i+1:]:
+                all_combinations.append((col1, col2))
+    
+    # 3-attribute combinations
+    if max_attributes >= 3:
+        for i, col1 in enumerate(filtered_columns):
+            for j, col2 in enumerate(filtered_columns[i+1:], i+1):
+                for col3 in filtered_columns[j+1:]:
+                    all_combinations.append((col1, col2, col3))
+    
+    # Limit to requested maximum number of combinations
+    if len(all_combinations) > max_combinations:
+        # Prioritize combinations with 2-3 attributes
+        multi_attr = [comb for comb in all_combinations if len(comb) > 1]
+        single_attr = [comb for comb in all_combinations if len(comb) == 1]
+        
+        # Shuffle to get variety
+        import random
+        random.shuffle(multi_attr)
+        random.shuffle(single_attr)
+        
+        # Select combinations with preference for multi-attribute ones
+        selected_combinations = []
+        if len(multi_attr) <= max_combinations:
+            selected_combinations = multi_attr
+            remaining = max_combinations - len(multi_attr)
+            if remaining > 0:
+                selected_combinations.extend(single_attr[:remaining])
+        else:
+            selected_combinations = multi_attr[:max_combinations]
+        
+        all_combinations = selected_combinations
+    
+    # Evaluate each combination
+    results = []
+    
+    for attrs in all_combinations:
+        # Create temporary dataframe
+        df_tmp = build_category(df=df, cat_cols=list(attrs), hierarchy_mode=True)
+        comb_str = "_".join(attrs)
+        
+        # Calculate statistics
+        df_stats, dist_ = calc_dist(df=df_tmp, comb_str=comb_str)
+        price_stats = calc_price_stats(df_tmp) if 'price' in df_tmp.columns else None
+        
+        # Check constraints on number of AGs and products per AG
+        num_ags = df_stats['# AGs'].values[0]
+        
+        # Get min/max products per AG or set defaults if columns don't exist
+        min_products_in_ag = 0
+        max_products_in_ag = float('inf')
+        avg_products_in_ag = 0
+        
+        # Check if the expected stat columns exist
+        if 'min_products_in_ag' in df_stats.columns:
+            min_products_in_ag = df_stats['min_products_in_ag'].values[0]
+        if 'max_products_in_ag' in df_stats.columns:
+            max_products_in_ag = df_stats['max_products_in_ag'].values[0]
+        if 'Average Products in AG' in df_stats.columns:
+            avg_products_in_ag = df_stats['Average Products in AG'].values[0]
+            
+        # Skip this combination if it doesn't meet the criteria
+        criteria_mismatch = False
+        
+        # Check number of AGs
+        if min_ags is not None and num_ags < min_ags:
+            criteria_mismatch = True
+        if max_ags is not None and num_ags > max_ags:
+            criteria_mismatch = True
+            
+        # Check products per AG
+        if min_products is not None and min_products_in_ag < min_products:
+            criteria_mismatch = True
+        if max_products is not None and max_products_in_ag > max_products:
+            criteria_mismatch = True
+            
+        if criteria_mismatch:
+            continue
+            
+        # Calculate score
+        overall_score, dist_score, price_score, explanation = calculate_ag_score(df_stats, price_stats)
+        
+        # Add to results
+        results.append({
+            'attributes': attrs,
+            'attribute_names': ", ".join(attrs),
+            'score': overall_score,
+            'distribution_score': dist_score,
+            'price_score': price_score,
+            'num_ags': num_ags,
+            'min_products': int(min_products_in_ag),
+            'max_products': int(max_products_in_ag),
+            'avg_products': avg_products_in_ag,
+            'explanation': explanation
+        })
+    
+    # Check if all scores are 1 (poor)
+    all_scores_are_one = all(result['score'] == 1 for result in results)
+    
+    if all_scores_are_one and results:
+        # If all scores are 1, sort by distribution score and then coefficient of variation (lower is better)
+        for result in results:
+            # Calculate the coefficient of variation directly
+            if 'avg_products' in result and result['avg_products'] > 0:
+                # Use the min/max range relative to average as a secondary sorting metric
+                # Smaller range = more uniform distribution
+                result['distribution_range'] = (result['max_products'] - result['min_products']) / result['avg_products']
+            else:
+                result['distribution_range'] = float('inf')
+                
+        # Sort by distribution score first (higher is better), then by distribution range (lower is better)
+        results.sort(key=lambda x: (-x['distribution_score'], x['distribution_range'], len(x['attributes'])))
+    else:
+        # Default sort by overall score (highest first), then by number of attributes (prefer smaller combinations)
+        results.sort(key=lambda x: (-x['score'], len(x['attributes'])))
+    
+    return results
+
+def calculate_ag_score(df_stats, price_stats):
+    """Calculate a score (1-3) for AG combination based on distribution and price variance
+    
+    Score considers:
+    1. Product distribution normality (using coefficient of variation)
+    2. Price variance within AGs
+    
+    Returns:
+    - overall_score: 1 (poor) to 3 (excellent)
+    - distribution_score: 1 (poor) to 3 (excellent)
+    - price_score: 1 (poor) to 3 (excellent) or None if price data isn't available
+    - score_explanation: Text explaining the score calculation
+    """
+    explanation = []
+    
+    # 1. Calculate distribution score based on coefficient of variation
+    # Lower CV indicates more uniform distribution (what we want)
+    if df_stats is not None:
+        # Calculate coefficient of variation of product counts across AGs
+        cv = df_stats['Std Products in AG'].values[0] / df_stats['Average Products in AG'].values[0]
+        
+        # Score based on CV thresholds
+        if cv < 0.5:  # Very even distribution
+            distribution_score = 3
+            explanation.append("Product distribution is very uniform across AGs (Excellent)")
+        elif cv < 1.0:  # Moderately even
+            distribution_score = 2
+            explanation.append("Product distribution is somewhat uniform across AGs (Good)")
+        else:  # Highly variable
+            distribution_score = 1
+            explanation.append("Product distribution varies significantly across AGs (Poor)")
+            
+    else:
+        distribution_score = 1
+        explanation.append("Could not calculate distribution score")
+    
+    # 2. Calculate price score based on average price variation within AGs
+    if price_stats is not None:
+        # Get average coefficient of variation across all AGs
+        # Filter out potential divide-by-zero cases
+        valid_cvs = price_stats[price_stats['Price Mean'] > 0]['Price CV']
+        if not valid_cvs.empty:
+            avg_price_cv = valid_cvs.mean()
+            
+            # Score based on CV thresholds for price
+            if avg_price_cv < 15:  # Very consistent pricing within AGs
+                price_score = 3
+                explanation.append("Price variation within AGs is very low (Excellent)")
+            elif avg_price_cv < 30:  # Moderately consistent
+                price_score = 2
+                explanation.append("Price variation within AGs is moderate (Good)")
+            else:  # Highly variable pricing
+                price_score = 1
+                explanation.append("Price variation within AGs is high (Poor)")
+        else:
+            price_score = None
+            explanation.append("Not enough valid price data to calculate price score")
+    else:
+        price_score = None
+        explanation.append("No price data available")
+    
+    # 3. Calculate overall score
+    if price_score is not None:
+        # Average the two scores
+        overall_score = (distribution_score + price_score) / 2
+        # Round to nearest integer for simplicity (1, 2, or 3)
+        overall_score = round(overall_score)
+    else:
+        # If no price score, use only distribution score
+        overall_score = distribution_score
+    
+    score_explanation = "\n".join(explanation)
+    
+    return overall_score, distribution_score, price_score, score_explanation
+
 def run_analysis(df, selected_attributes, min_products, max_products, 
                 hist_xlimit, hist_xticks_jumps, enable_hierarchy):
     """Run complete analysis on selected attributes"""
@@ -476,7 +706,10 @@ def run_analysis(df, selected_attributes, min_products, max_products,
     # Calculate price statistics per AG if price column exists
     price_stats = calc_price_stats(df_tmp) if 'price' in df_tmp.columns else None
     
-    return df_tmp, df_stats, dist_, price_stats
+    # Calculate AG quality score (1-3)
+    overall_score, distribution_score, price_score, score_explanation = calculate_ag_score(df_stats, price_stats)
+    
+    return df_tmp, df_stats, dist_, price_stats, overall_score, distribution_score, price_score, score_explanation
 
 # Chart.js visualizations using streamlit-elements
 def generate_colors(n):
@@ -570,15 +803,13 @@ def plot_hierarchy_level(df_tmp, level, col_name, comb_str):
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT}
+            'yanchor': 'top'
         },
+        title_font={'size': 16, 'color': '#0F172A', 'family': HELVETICA_FONT},
         bargap=0.1,  # Explicitly set bargap to avoid numpy.float64 conversion issues
         xaxis={
-            'title': {
-                'text': f'{col_name}',
-                'font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT}
-            },
+            'title': f'{col_name}',
+            'title_font': {'size': 12, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickfont': {'size': 10, 'color': '#0F172A', 'family': HELVETICA_FONT},
             'tickmode': 'array',
             'tickvals': list(range(len(group_names))),
@@ -1181,7 +1412,12 @@ elif st.session_state.current_step == 2:
             categorical_attrs = {k: v for k, v in attribute_stats.items() if v['type'] == 'categorical'}
             
             if categorical_attrs:
-                for attr, stats in categorical_attrs.items():
+                # Sort attributes by number of unique values (highest to lowest)
+                sorted_attrs = sorted(categorical_attrs.items(), 
+                                     key=lambda x: x[1]['unique_values'], 
+                                     reverse=True)
+                
+                for attr, stats in sorted_attrs:
                     with st.expander(f"{attr} - {stats['unique_values']} unique values"):
                         # Display top values
                         st.write("Top values:")
@@ -1243,79 +1479,433 @@ elif st.session_state.current_step == 3:
         excluded_columns = ['ag', 'id', 'name', 'description', 'product_description']
         available_columns = [col for col in df.columns if col not in excluded_columns]
         
-        st.write("Select which attributes to use for creating Assortment Groups:")
-        st.write("The order of attributes matters - they will form a hierarchy from top to bottom.")
+        # Check if we need to generate recommendations
+        if "optimal_combinations" not in st.session_state:
+            st.session_state.optimal_combinations = None
+            
+        # Create tabs for manual selection and recommendations
+        # Initialize the tab selection if not already set
+        if 'tab_selection' not in st.session_state:
+            st.session_state.tab_selection = "Manual Selection"
         
-        # Determine default values for attribute selection
-        default_attributes = []
-        if st.session_state.selected_attributes:
-            # Use previously selected attributes if they exist
-            default_attributes = st.session_state.selected_attributes
-        elif 'brands' in available_columns and 'colors' in available_columns:
-            # Default to common retail attributes
-            default_attributes = ['brands', 'colors']
-        elif len(available_columns) >= 2:
-            # Default to first two columns
-            default_attributes = available_columns[:2]
-        else:
-            # Use whatever is available
-            default_attributes = available_columns
-        
-        # Function to update session state on selection change
-        def update_selected_attributes():
-            st.session_state.selected_attributes = st.session_state.attribute_selection
-        
-        # Select attributes for AG creation with a persistent key
-        selected_attributes = st.multiselect(
-            "Select Attributes",
-            available_columns,
-            default=default_attributes,
-            key="attribute_selection",
-            on_change=update_selected_attributes
+        # Create radio buttons styled as tabs
+        st.session_state.tab_selection = st.radio(
+            "Select tab:",
+            ["Manual Selection", "Recommended Combinations"],
+            horizontal=True,
+            label_visibility="collapsed",
+            index=0 if st.session_state.tab_selection == "Manual Selection" else 1
         )
         
-        # Display the selection
-        if selected_attributes:
-            st.success(f"You've selected {len(selected_attributes)} attributes: {', '.join(selected_attributes)}")
+        # Set tab selection when generating recommendations
+        if 'generate_button_clicked' in st.session_state and st.session_state.generate_button_clicked:
+            st.session_state.tab_selection = "Recommended Combinations"
+            # Reset the flag
+            st.session_state.generate_button_clicked = False
+        # Conditionally display the content based on tab selection
+        if st.session_state.tab_selection == "Manual Selection":
+            st.write("Build your AG hierarchies by creating multiple attribute combinations:")
             
-            # Show how many AGs might be created (theoretical maximum)
-            max_ags = 1
-            for attr in selected_attributes:
-                if attr in st.session_state.attribute_stats:
-                    stats = st.session_state.attribute_stats[attr]
-                    if stats['type'] == 'categorical':
-                        max_ags *= stats['unique_values']
+            # Initialize the list of combinations inputs if not already set
+            if 'combination_inputs' not in st.session_state:
+                st.session_state.combination_inputs = [{'id': 0, 'attributes': []}]
+                
+                # Initialize with a default combination if we have attributes
+                if 'brands' in available_columns and 'colors' in available_columns:
+                    # Default to common retail attributes
+                    st.session_state.combination_inputs[0]['attributes'] = ['brands', 'colors']
+                elif len(available_columns) >= 2:
+                    # Default to first two columns
+                    st.session_state.combination_inputs[0]['attributes'] = available_columns[:2]
+                elif len(available_columns) > 0:
+                    # Use whatever is available
+                    st.session_state.combination_inputs[0]['attributes'] = [available_columns[0]]
+                    
+            # Function to add a new combination input
+            def add_combination_input():
+                # Get a unique ID for the new combination
+                new_id = 0
+                if st.session_state.combination_inputs:
+                    new_id = max([c['id'] for c in st.session_state.combination_inputs]) + 1
+                
+                # Add a new empty combination
+                st.session_state.combination_inputs.append({'id': new_id, 'attributes': []})
             
-            st.info(f"These attributes could theoretically create up to {max_ags:,} unique AGs (though the actual number will likely be much lower).")
-        else:
-            st.warning("Please select at least one attribute to continue.")
+            # Function to remove a combination input by ID
+            def remove_combination_input(input_id):
+                st.session_state.combination_inputs = [c for c in st.session_state.combination_inputs if c['id'] != input_id]
+                if not st.session_state.combination_inputs:
+                    # Always have at least one input
+                    st.session_state.combination_inputs.append({'id': 0, 'attributes': []})
+            
+            # Function to update a combination's attributes
+            def update_combination_attributes(input_id, attributes):
+                for c in st.session_state.combination_inputs:
+                    if c['id'] == input_id:
+                        c['attributes'] = attributes
+                        break
+            
+            # Display each combination input
+            for i, combo_input in enumerate(st.session_state.combination_inputs):
+                input_id = combo_input['id']
+                attributes = combo_input['attributes']
+                
+                # Create a container for this combination
+                with st.container():
+                    # Add a divider and label if not the first combination
+                    if i > 0:
+                        st.markdown("---")
+                    
+                    # Create columns for the attribute selector and remove button
+                    col1, col2 = st.columns([6, 1])
+                    
+                    with col1:
+                        st.markdown(f"#### Combination {i+1}")
+                        
+                        # First, initialize the widget's state for this combination if needed
+                        widget_key = f"attribute_selection_{input_id}"
+                        if widget_key not in st.session_state:
+                            st.session_state[widget_key] = attributes
+                        
+                        # Select attributes for AG creation with a unique key for this combination
+                        selected_attributes = st.multiselect(
+                            "Select Attributes",
+                            available_columns,
+                            key=widget_key,
+
+                        )
+                        
+                        # Update the combination with the selected attributes
+                        update_combination_attributes(input_id, selected_attributes)
+                        
+                        # Display information about this combination
+                        if selected_attributes:
+                            # Show how many AGs might be created (theoretical maximum)
+                            max_ags = 1
+                            for attr in selected_attributes:
+                                if attr in st.session_state.attribute_stats:
+                                    stats = st.session_state.attribute_stats[attr]
+                                    if stats['type'] == 'categorical':
+                                        max_ags *= stats['unique_values']
+                            
+                            st.info(f"Creates up to {max_ags:,} unique AGs using: {', '.join(selected_attributes)}")
+                        else:
+                            st.warning("Please select at least one attribute for this combination.")
+                    
+                    with col2:
+                        # Only show remove button if there's more than one combination
+                        if len(st.session_state.combination_inputs) > 1:
+                            if st.button("×", key=f"remove_combo_{input_id}"):
+                                remove_combination_input(input_id)
+                                st.rerun()
+            
+            # Styled + button to add another combination
+            col1, col2, col3 = st.columns([3, 1, 3])
+            with col2:
+                if st.button("+ Add", type="primary", use_container_width=True):
+                    add_combination_input()
+                    st.rerun()
+            
+            # Store combinations in selected_combinations for analysis
+            # and filter out empty combinations
+            st.session_state.selected_combinations = [
+                c['attributes'] for c in st.session_state.combination_inputs 
+                if c['attributes']
+            ]
+            
+            # Use the first valid combination as the active one for backward compatibility
+            if st.session_state.selected_combinations:
+                st.session_state.selected_attributes = st.session_state.selected_combinations[0]
+        
+        elif st.session_state.tab_selection == "Recommended Combinations":
+            st.write("Let the system recommend optimal attribute combinations based on:")
+            st.write("1. Product distribution uniformity across AGs")
+            st.write("2. Price consistency within AGs")
+            
+            # Parameters for recommendations
+            st.write("### Set Constraints for Recommendations")
+            
+            # Create a form to collect all parameters
+            with st.form(key="recommendation_parameters"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    min_products = st.number_input("Min Products per AG", 
+                                                  min_value=1, 
+                                                  value=1,
+ )
+                    
+                    max_products = st.number_input("Max Products per AG", 
+                                                  min_value=int(min_products), 
+                                                  value=10000000,
+ )
+                
+                with col2:
+                    min_ags = st.number_input("Min Number of AGs", 
+                                             min_value=1, 
+                                             value=1,
+ )
+                    
+                    max_ags = st.number_input("Max Number of AGs", 
+                                             min_value=int(min_ags), 
+                                             value=10000000,
+ )
+                
+                # Max attributes to include in a combination
+                max_attributes = st.slider("Max Attributes per Combination", 
+                                          min_value=1, 
+                                          max_value=5, 
+                                          value=3,
+ )
+                
+                # Number of combinations to evaluate
+                max_combinations = st.slider("Number of Combinations to Evaluate", 
+                                           min_value=5, 
+                                           max_value=50, 
+                                           value=10,
+ )
+                
+                # Attributes to exclude from recommendations
+                st.markdown("<p class='card-title'>Exclude Specific Attributes</p>", unsafe_allow_html=True)
+                # Initialize session state for excluded attributes if it doesn't exist
+                if 'excluded_attributes' not in st.session_state:
+                    st.session_state.excluded_attributes = []
+                
+                available_attrs = available_columns
+                excluded_attributes = st.multiselect(
+                    "Select attributes to exclude from recommendations",
+                    options=available_attrs,
+                    default=st.session_state.excluded_attributes,
+ )
+                
+                # Update session state
+                st.session_state.excluded_attributes = excluded_attributes
+                
+                # Submit button
+                generate_button = st.form_submit_button("Generate Recommendations", type="primary")
+                
+            # Generate recommendations if requested
+            if generate_button:
+                with st.spinner("Analyzing attribute combinations..."):
+                    # Convert any very high values to None (no limit)
+                    if max_products >= 1000000:
+                        max_products = None
+                    if max_ags >= 1000000:
+                        max_ags = None
+                        
+                    # Generate optimal combinations
+                    st.session_state.optimal_combinations = suggest_optimal_combinations(
+                        df, 
+                        available_columns,
+                        max_attributes=max_attributes,
+                        max_combinations=max_combinations,
+                        min_products=min_products,
+                        max_products=max_products,
+                        min_ags=min_ags,
+                        max_ags=max_ags,
+                        excluded_attributes=excluded_attributes
+                    )
+                    
+                    # Set flag to stay on recommendations tab after regenerating
+                    st.session_state.generate_button_clicked = True
+                    
+                    st.rerun()  # Rerun to show the results
+            
+            # Display recommendations if already generated
+            if st.session_state.optimal_combinations is not None:
+                # Show recommendations
+                if len(st.session_state.optimal_combinations) > 0:
+                    # Check if all scores are 1
+                    all_scores_are_one = all(combo['score'] == 1 for combo in st.session_state.optimal_combinations)
+                    
+                    if all_scores_are_one:
+                        st.info(f"Found {len(st.session_state.optimal_combinations)} attribute combinations. All combinations have a low overall score, so showing those with the most uniform product distribution.")
+                    else:
+                        st.success(f"Found {len(st.session_state.optimal_combinations)} optimal attribute combinations")
+                else:
+                    st.warning("No combinations found that match your criteria. Try relaxing your constraints and regenerate.")
+                
+                # Only show recommendations if there are any
+                if len(st.session_state.optimal_combinations) > 0:
+                    # Function to analyze and view results for a recommendation
+                    def view_results_for_recommendation(rec_index):
+                        rec = st.session_state.optimal_combinations[rec_index]
+                        attributes = list(rec['attributes'])
+                        
+                        # Store the selected attributes in session state
+                        st.session_state.selected_attributes = attributes
+                        
+                        # Run the analysis with these attributes
+                        df = st.session_state.df
+                        with st.spinner("Running analysis..."):
+                            results = run_analysis(
+                                df, 
+                                attributes,
+                                st.session_state.min_products_in_group,
+                                st.session_state.max_products_in_group,
+                                st.session_state.hist_xlimit,
+                                st.session_state.hist_xticks_jumps,
+                                st.session_state.enable_hierarchy
+                            )
+                            
+                            # Store results in session state
+                            st.session_state.analysis_results = results
+                            
+                            # Move to next step (view results)
+                            st.session_state.current_step = 4
+                            # Trigger auto-scroll to top
+                            st.session_state.auto_scroll = True
+                    
+                    # Display recommendations in cards with checkboxes for multiple selection
+                    st.markdown("### Recommended Combinations")
+                    st.markdown("Select combinations to include in comparison:")
+                    
+                    for i, rec in enumerate(st.session_state.optimal_combinations):
+                        score_color = "#10B981" if rec['score'] == 3 else "#F59E0B" if rec['score'] == 2 else "#EF4444"
+                        
+                        # Create a unique key for this checkbox
+                        checkbox_key = f"select_rec_{i}"
+                        
+                        # Check if this combination is already in selected combinations
+                        is_selected = list(rec['attributes']) in st.session_state.selected_recommended_combinations
+                        
+                        # Create columns for checkbox and card
+                        col1, col2 = st.columns([0.5, 10])
+                        
+                        with col1:
+                            # Checkbox to select this combination
+                            selected = st.checkbox("", value=is_selected, key=checkbox_key)
+                            
+                            # Update selected combinations when checkbox changes
+                            if selected and list(rec['attributes']) not in st.session_state.selected_recommended_combinations:
+                                st.session_state.selected_recommended_combinations.append(list(rec['attributes']))
+                            elif not selected and list(rec['attributes']) in st.session_state.selected_recommended_combinations:
+                                st.session_state.selected_recommended_combinations.remove(list(rec['attributes']))
+                        
+                        with col2:
+                            # Initialize container for both the card and the button
+                            rec_container = st.container()
+                            with rec_container:
+                                # Display recommendation card with a separate visible button
+                                card_col, button_col = st.columns([4, 1])
+                                
+                                with card_col:
+                                    st.markdown(f"""
+                                    <div class="stat-card" style="margin-bottom: 15px; position: relative;">
+                                        <div style="position: absolute; top: 10px; right: 10px; background-color: {score_color}; 
+                                                    color: white; width: 30px; height: 30px; border-radius: 15px; 
+                                                    display: flex; justify-content: center; align-items: center; 
+                                                    font-weight: bold;">
+                                            {rec['score']}
+                                        </div>
+                                        <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">
+                                            {rec['attribute_names']}
+                                        </h3>
+                                        <p style="margin-bottom: 5px;">Creates {int(rec['num_ags'])} AGs with avg. {int(rec['avg_products'])} products each</p>
+                                        <p style="margin-bottom: 5px;">Min: {rec['min_products']} | Max: {rec['max_products']} products per AG</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with button_col:
+                                    # Create a visible button that when clicked shows the results
+                                    if st.button("📊", key=f"view_results_button_{i}", 
+                                                help="View detailed analysis results"):
+                                        view_results_for_recommendation(i)
+                                        st.rerun()
+                
+                # Compare button for selected recommendations
+                if st.session_state.selected_recommended_combinations:
+                    if st.button("Compare Selected Combinations", type="primary"):
+                        # Generate comparison results for all selected combinations
+                        with st.spinner("Running analysis on all selected combinations..."):
+                            # Store information to redirect to results page after analysis
+                            st.session_state.generated_comparisons = True
+                            results = []
+                            df = st.session_state.df
+                            
+                            # Analyze each combination
+                            for combo in st.session_state.selected_recommended_combinations:
+                                analysis_result = run_analysis(
+                                    df, 
+                                    combo,
+                                    st.session_state.min_products_in_group,
+                                    st.session_state.max_products_in_group,
+                                    st.session_state.hist_xlimit,
+                                    st.session_state.hist_xticks_jumps,
+                                    st.session_state.enable_hierarchy
+                                )
+                                
+                                # Store the results along with the attribute names
+                                results.append({
+                                    'attributes': combo,
+                                    'attribute_names': ', '.join(combo),
+                                    'results': analysis_result
+                                })
+                            
+                            # Store results in session state for the comparison view
+                            st.session_state.comparison_results = results
+                            
+                            # Move to next step (view results)
+                            st.session_state.current_step = 4
+                            # Trigger auto-scroll to top
+                            st.session_state.auto_scroll = True
+                            st.rerun()
+                else:
+                    st.info("Select combinations to compare by checking the boxes next to them.")
+                
+                # Button to regenerate
+                if st.button("Regenerate Recommendations"):
+                    st.session_state.optimal_combinations = None
+                    # Make sure we stay on the Recommended Combinations tab after rerun
+                    st.session_state.tab_selection = "Recommended Combinations"
+                    st.rerun()
         
         # Use the default parameters (no UI controls to modify them)
         # We'll use the session state values directly in the analysis
         
+        # Removed AG Combination Comparison section - it will only show in the results step
+                    
         # Navigation and analysis buttons
+        st.markdown("---")
         col1, col2 = st.columns([1, 1])
         with col1:
             st.button("Previous: Analyze Attributes", on_click=go_to_prev_step)
         with col2:
-            if selected_attributes:
-                if st.button("View Results", type="primary"):
-                    with st.spinner("Running analysis..."):
-                        # Run the analysis
+            # Check if there are any valid combinations to analyze
+            valid_combinations = st.session_state.selected_combinations
+            if valid_combinations:
+                if st.button("View Results for All Combinations", type="primary"):
+                    with st.spinner("Analyzing all selected combinations..."):
+                        # Run the analysis for each combination
                         df = st.session_state.df
-                        # Use the values from session state
-                        results = run_analysis(
-                            df, 
-                            selected_attributes,
-                            st.session_state.min_products_in_group,
-                            st.session_state.max_products_in_group,
-                            st.session_state.hist_xlimit,
-                            st.session_state.hist_xticks_jumps,
-                            st.session_state.enable_hierarchy
-                        )
                         
-                        # Store results in session state
-                        st.session_state.analysis_results = results
+                        # Generate comparison results for all combinations
+                        results = []
+                        for combo in valid_combinations:
+                            analysis_result = run_analysis(
+                                df, 
+                                combo,
+                                st.session_state.min_products_in_group,
+                                st.session_state.max_products_in_group,
+                                st.session_state.hist_xlimit,
+                                st.session_state.hist_xticks_jumps,
+                                st.session_state.enable_hierarchy
+                            )
+                            
+                            # Store the results along with the attribute names
+                            results.append({
+                                'attributes': combo,
+                                'attribute_names': ', '.join(combo),
+                                'results': analysis_result
+                            })
+                        
+                        # Store results in session state for the comparison view
+                        st.session_state.comparison_results = results
+                        
+                        # Store the first combination's result for backwards compatibility
+                        if results:
+                            st.session_state.selected_attributes = results[0]['attributes']
+                            st.session_state.analysis_results = results[0]['results']
                         
                         # Move to next step
                         go_to_next_step()
@@ -1330,10 +1920,156 @@ elif st.session_state.current_step == 3:
 elif st.session_state.current_step == 4:
     st.header("Step 4: View Results")
     
-    if st.session_state.analysis_results and len(st.session_state.analysis_results) == 4:
-        df_tmp, df_stats, dist_, price_stats = st.session_state.analysis_results
+    # Check if we have multiple combinations to compare
+    has_comparison = 'comparison_results' in st.session_state and len(st.session_state.comparison_results) > 1
+    
+    if has_comparison:
+        st.subheader("Combination Comparison")
+        
+        # Create a comparison table
+        comparison_data = []
+        for combo_result in st.session_state.comparison_results:
+            attributes = combo_result['attributes']
+            attribute_names = combo_result['attribute_names']
+            results = combo_result['results']
+            
+            # Extract key metrics for comparison
+            if len(results) >= 4:
+                _, df_stats, _, price_stats = results[:4]
+                
+                # Extract score if available (newer format)
+                if len(results) == 8:
+                    overall_score, distribution_score, price_score, _ = results[4:8]
+                else:
+                    overall_score, distribution_score, price_score = None, None, None
+                
+                # Add all metrics to comparison data
+                row = {
+                    "Attribute Combination": attribute_names,
+                    "Overall Score": str(overall_score) if overall_score is not None else "N/A",
+                    "Distribution Score": str(distribution_score) if distribution_score is not None else "N/A",
+                    "Price Score": str(price_score) if price_score is not None else "N/A",
+                    "Total Products": f"{df_stats['# Products'].values[0]:,}",
+                    "Total AGs": f"{df_stats['# AGs'].values[0]:,}",
+                    "Avg Products/AG": f"{df_stats['Average Products in AG'].values[0]:.1f}",
+                    "Median Products/AG": f"{df_stats['Median Products in AG'].values[0]:.1f}",
+                    "Min Products": f"{df_stats['min_products_in_ag'].values[0]}",
+                    "Max Products": f"{df_stats['max_products_in_ag'].values[0]}",
+                    "Std Dev": f"{df_stats['Std Products in AG'].values[0]:.1f}"
+                }
+                
+                # Add coefficient of variation if available
+                if 'CV Products in AG' in df_stats.columns:
+                    row["CV %"] = f"{df_stats['CV Products in AG'].values[0]:.1f}%"
+                elif 'CV' in df_stats.columns:
+                    row["CV %"] = f"{df_stats['CV'].values[0]:.1f}%"
+                comparison_data.append(row)
+        
+        # Create comparison dataframe and display
+        if comparison_data:
+            comparison_df = pd.DataFrame(comparison_data)
+            st.dataframe(comparison_df, use_container_width=True)
+            
+            # Allow selecting a specific combination to view in detail using tabs
+            st.write("Select a combination to view detailed results:")
+            
+            # Create tabs for each combination
+            tab_labels = [combo_result['attribute_names'] for combo_result in st.session_state.comparison_results]
+            
+            # Add a radio button to select the combination
+            selected_idx = st.radio(
+                "Select a combination to view detailed results:",
+                options=range(len(tab_labels)),
+                format_func=lambda i: tab_labels[i],
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+            
+            # Use the selected index to update the session state
+            combo_result = st.session_state.comparison_results[selected_idx]
+            st.session_state.selected_attributes = combo_result['attributes']
+            st.session_state.analysis_results = combo_result['results']
+            
+            st.markdown("---")
+    
+    # Display detailed results for the currently selected combination
+    if st.session_state.analysis_results and len(st.session_state.analysis_results) >= 4:
+        # Unpack results - note we now have additional items for scoring
+        if len(st.session_state.analysis_results) == 8:  # New format with scoring
+            df_tmp, df_stats, dist_, price_stats, overall_score, distribution_score, price_score, score_explanation = st.session_state.analysis_results
+        else:  # Backward compatibility with old format
+            df_tmp, df_stats, dist_, price_stats = st.session_state.analysis_results
+            overall_score = None
+            distribution_score = None
+            price_score = None
+            score_explanation = None
+            
         selected_attributes = st.session_state.selected_attributes
         comb_str = "_".join(selected_attributes)
+        
+        # If we are in comparison mode, show which combination we're viewing
+        if has_comparison:
+            st.subheader(f"Detailed Results: {', '.join(selected_attributes)}")
+        
+        # Display AG Score Card if score is available
+        if overall_score is not None:
+            st.subheader("AG Quality Score")
+            
+            # Score display
+            score_cols = st.columns(3)
+            with score_cols[0]:
+                # Overall score with dynamic color based on value
+                score_color = "#10B981" if overall_score == 3 else "#F59E0B" if overall_score == 2 else "#EF4444"  # Green, Yellow, Red
+                st.markdown(f"""
+                <div class="stat-card">
+                    <div class="stat-value" style="color: {score_color} !important;">
+                        {overall_score}/3
+                    </div>
+                    <div class="stat-label">Overall Quality</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with score_cols[1]:
+                # Distribution score
+                dist_color = "#10B981" if distribution_score == 3 else "#F59E0B" if distribution_score == 2 else "#EF4444"
+                st.markdown(f"""
+                <div class="stat-card">
+                    <div class="stat-value" style="color: {dist_color} !important;">
+                        {distribution_score}/3
+                    </div>
+                    <div class="stat-label">Product Distribution</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with score_cols[2]:
+                # Price score (if available)
+                if price_score is not None:
+                    price_color = "#10B981" if price_score == 3 else "#F59E0B" if price_score == 2 else "#EF4444"
+                    st.markdown(f"""
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: {price_color} !important;">
+                            {price_score}/3
+                        </div>
+                        <div class="stat-label">Price Consistency</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: var(--slate-gray) !important;">
+                            N/A
+                        </div>
+                        <div class="stat-label">Price Consistency</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Explanation of the scores
+            with st.expander("Score Explanation"):
+                if score_explanation:
+                    for line in score_explanation.split('\n'):
+                        st.write(line)
+                else:
+                    st.write("No detailed score explanation available.")
         
         # Main statistics in a modern card
         st.subheader("AG Statistics")

@@ -1,0 +1,47 @@
+ValueError: Invalid value of type 'numpy.float64' received for the 'bargap' property of layout Received value: np.float64(-1.1102230246251565e-16) The 'bargap' property is a number and may be specified as: - An int or float in the interval [0, 1]
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 593, in code_to_exec
+    exec(code, module.__dict__)
+File "/home/runner/workspace/app.py", line 1048, in <module>
+    st.plotly_chart(fig)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/metrics_util.py", line 410, in wrapped_func
+    result = non_optional_func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/elements/plotly_chart.py", line 485, in plotly_chart
+    figure = plotly.tools.mpl_to_plotly(figure_or_data)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/tools.py", line 103, in mpl_to_plotly
+    matplotlylib.Exporter(renderer).run(fig)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/mplexporter/exporter.py", line 53, in run
+    self.crawl_fig(fig)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/mplexporter/exporter.py", line 124, in crawl_fig
+    self.crawl_ax(ax)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/mplexporter/exporter.py", line 128, in crawl_ax
+    with self.renderer.draw_axes(ax=ax, props=utils.get_axes_properties(ax)):
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/contextlib.py", line 144, in __exit__
+    next(self.gen)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/mplexporter/renderers/base.py", line 58, in draw_axes
+    self.close_axes(ax=ax)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/renderer.py", line 196, in close_axes
+    self.draw_bars(self.current_bars)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/renderer.py", line 213, in draw_bars
+    self.draw_bar(trace)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/matplotlylib/renderer.py", line 304, in draw_bar
+    self.plotly_fig["layout"]["bargap"] = bar_gap
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/basedatatypes.py", line 5898, in __setitem__
+    super(BaseLayoutHierarchyType, self).__setitem__(prop, value)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/basedatatypes.py", line 4860, in __setitem__
+    self._set_prop(prop, value)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/basedatatypes.py", line 5204, in _set_prop
+    raise err
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/plotly/basedatatypes.py", line 5199, in _set_prop
+    val = validator.validate_coerce(val)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/_plotly_utils/basevalidators.py", line 810, in validate_coerce
+    self.raise_invalid_val(v)
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/_plotly_utils/basevalidators.py", line 299, in raise_invalid_val
+    raise ValueError(

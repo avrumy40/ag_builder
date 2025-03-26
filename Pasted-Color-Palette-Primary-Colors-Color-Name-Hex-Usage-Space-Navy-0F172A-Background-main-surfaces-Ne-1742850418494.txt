@@ -1,0 +1,102 @@
+Color Palette
+🧊 Primary Colors
+Color	Name	Hex	Usage
+Space Navy	#0F172A	Background, main surfaces
+Neon Sky	#38BDF8	Primary CTA, highlights
+Cloud White	#F1F5F9	Surface background, cards
+Slate Grey	#94A3B8	Labels, borders, secondary text
+🔆 Accent Colors
+Color	Name	Hex	Usage
+Nano Green	#22C55E	Success, data line charts
+Pulse Yellow	#FACC15	Warnings, callouts
+Alert Red	#EF4444	Errors, danger states
+🔤 Typography
+Primary Typeface: Inter
+Designed for digital clarity and geometric beauty
+
+System-neutral, modern, and elegant
+
+Use	Style	Size	Weight
+Headings	Inter	24–32px	600–700
+Subheads	Inter	18–20px	500
+Body Text	Inter	14–16px	400
+UI Labels	Inter	12–14px	400
+Numbers	Inter (tabular)	14–16px	500
+🧱 Layout & Spacing
+Grid System: 12-column, 8px base unit
+
+Margins: 24–48px outer margins on desktop
+
+Component Spacing:
+
+Inputs & buttons: 16px vertical padding
+
+Section gaps: 32px
+
+Tables & charts: 24px padding all sides
+
+🔘 Components
+🧙‍♂️ Wizard Steps
+Stepper: Horizontal or vertical based on context
+
+Progress Indicator: Animated bar or numbered stepper with icons
+
+Buttons: Rounded rectangle, pill shape (radius: 8px)
+
+Primary: Neon Sky
+
+Secondary: Slate Grey with hover glow
+
+Disabled: Soft border + 30% opacity
+
+📊 Charts
+Use minimal grid lines
+
+Rounded corners on bars or chart containers
+
+Smooth line charts with subtle gradient fills
+
+Tooltip on hover with semi-transparent background (rgba(15,23,42,0.8))
+
+📋 Tables
+Clean rows, light dividers only
+
+Hover effects on rows (background: #F8FAFC)
+
+Sorting icons: minimalist chevrons
+
+Inline dropdowns and switches allowed
+
+Sticky headers recommended for long lists
+
+🧩 Iconography
+Use Feather Icons or Lucide — lightweight and outline-based
+
+Icon size: 16px–20px
+
+Maintain consistent stroke width
+
+Color: Slate Grey by default; switch to accent color when active
+
+✨ Motion & Transitions
+Duration: 200–300ms
+
+Ease: ease-in-out
+
+Use Cases:
+
+Step transitions: slide in/out (horizontal or fade)
+
+Hover: subtle glow or scale (scale(1.02))
+
+Chart load: grow/animate bars and lines from baseline
+
+🧪 Accessibility
+Text contrast: 4.5:1 minimum
+
+Keyboard-navigable steps
+
+ARIA roles for charts and data tables
+
+Tooltip alt text or screen-reader labels for visual elements
+
