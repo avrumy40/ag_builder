@@ -1,0 +1,12 @@
+[server]
+headless = true
+address = "0.0.0.0"
+port = 5000
+maxUploadSize = 800
+
+[theme]
+primaryColor = "#3B82F6"  # Electric Blue
+backgroundColor = "#F9FAFB"  # Snow White
+secondaryBackgroundColor = "#E5E7EB"  # Light Gray
+textColor = "#111827"  # Charcoal
+font = "Inter"
